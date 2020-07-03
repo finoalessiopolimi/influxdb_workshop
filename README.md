@@ -5,7 +5,7 @@ Start influxdb 2.0:
 
 Follow the instructions in the ksql workshop to run the docker-compose file with all the services.
 
-For the telegraf configuration see telegraf.conf
+For the telegraf configuration see [telegraf.conf](https://github.com/finoalessiopolimi/influxdb_workshop/blob/master/telegraf.conf)
 
 # Query
 
@@ -31,9 +31,9 @@ from(bucket: "from_kafka")
 ```
 from(bucket: "from_kafka")
   |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
-  |> drop(columns:["_start","_stop","host"])
-  |> filter(fn: (r) =>  r._field == "user_id" or r._field == "message" or r._field == "rating_id" or r._field == "rating_time" )
+  |> filter(fn: (r) => r._measurement == "ratings")
   |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
+  |> drop(columns: ["_start","_stop","host"])
   |> group()
   |> sort(columns: ["_time"], desc: false)
   |> limit(n: 5)
@@ -103,7 +103,7 @@ from(bucket: "poor_ratings")
 ## 6.5
 
 ##### Flux json telegraf conf
-See telegraf_json.conf
+See [telegraf_json.conf](https://github.com/finoalessiopolimi/influxdb_workshop/blob/master/telegraf_json.conf)
 
 ##### Flux
 ```
@@ -138,7 +138,7 @@ messages = from(bucket: "from_kafka")
 
 db_data = sql.from(
  driverName: "mysql",
- dataSourceName: "root:debezium@tcp(192.168.178.111:3306)/demo",
+ dataSourceName: "root:debezium@tcp(localhost:3306)/demo",
  query:"SELECT * FROM demo.CUSTOMERS ;"
 )
   |> rename(columns: {id: "user_id"})
@@ -176,7 +176,7 @@ db_data = sql.from(driverName: "mysql", dataSourceName: "root:debezium@tcp(local
 	|> rename(columns: {id: "user_id"})
 
 join(tables: {d1: messages, d2: db_data}, on: ["user_id"], method: "inner")
-	|> to(bucket: "from_mysql", org: "polimi_usde", fieldFn: (r) =>
+	|> to(bucket: "ratings_with_customer_data", org: "polimi_usde", fieldFn: (r) =>
 		({
             "first_name": r.first_name
             "last_name": r.last_name,
@@ -192,7 +192,7 @@ join(tables: {d1: messages, d2: db_data}, on: ["user_id"], method: "inner")
 
 ##### Flux
 ```
-from(bucket: "from_mysql")
+from(bucket: "ratings_with_customer_data")
   |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
   |> filter(fn: (r) => r._measurement == "ratings")
   |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
@@ -211,7 +211,7 @@ WHERE CLUB_STATUS='platinum'
 
 ##### Flux
 ```
-from(bucket: "from_mysql")
+from(bucket: "ratings_with_customer_data")
   |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
   |> filter(fn: (r) => r._measurement == "ratings")
   |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
