@@ -219,4 +219,25 @@ from(bucket: "ratings_with_customer_data")
   |> group()
   |> keep(columns:["email","stars","message"])
 ```
+## 10
+Count messages
 
+##### Flux
+```
+from(bucket: "from_kafka")
+  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+  |> filter(fn: (r) => r._measurement == "ratings" and r._field == "user_id")
+  |> group(columns:["_field"])
+  |> aggregateWindow(  every: 1m,  fn: count,  column: "_value",  timeSrc: "_stop",  timeDst: "_time",  createEmpty: true)
+```
+
+Rating average
+##### Flux
+```
+from(bucket: "from_kafka")
+  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+  |> group(columns:["_field"])
+  |> map(fn: (r) => ({ r with _value: int(v:r.stars) }))
+  |> aggregateWindow(  every: 30s,  fn:  mean ,  timeSrc: "_stop",  timeDst: "_time",  createEmpty: true)
+  |> drop(columns:["_start","_stop"])
+```
